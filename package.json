@@ -5,7 +5,9 @@
 	"main": "server.js",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
-		"start": "node main.js"
+		"start": "node server.js",
+		"publish-patch": "npm version patch && npm publish",
+		"publish-minor": "npm version minor && npm publish"
 	},
 	"keywords": [],
 	"author": "William Kam",

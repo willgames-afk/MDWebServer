@@ -123,13 +123,17 @@ app.use('/', (req, res) => {
 	//Attempt to load file
 	try {
 		if (path.extname(req.url) === "") { //Automatically serve index.html s
-			file = fs.readFileSync(path.join("./public", req.url, "index.html"));
+			file = fs.readFileSync(path.join(public_dir, req.url, "index.html"));
 		} else {
-			file = fs.readFileSync(path.join("./public", req.url));
+			file = fs.readFileSync(path.join(public_dir, req.url));
 		}
 
 		//If error is thrown, send error page
 	} catch (err) {
+		if (err.code == "ENOENT") {
+			res.status(404).sendFile(path.join(__dirname, public_dir,"doesntExistYet.html"));
+			return
+		}
 		sendErrorMessage(err, res);
 		return;
 	}
@@ -146,7 +150,7 @@ app.use('/', (req, res) => {
 
 //Start the app
 app.listen(port, () => {
-	console.log(`Markdown Web Server listening at http://localhost:${port}`);
+	console.log(`Markdown Web Server listening at http://localhost:${port} \nWith resources at '${res_dir}' and site at '${public_dir}'`);
 })
 
 
