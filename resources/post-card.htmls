@@ -1,0 +1,9 @@
+<article id="$name$" class="post">
+	<img src="$post-img$">
+	<h1 class="title">$title$</h1>
+	<div class="meta">
+		<span class="date">$date$</span>
+	</div>
+	<h2 class="subtitle">$subtitle$</h2>
+	<a href="/blog/$name$"><i>Full Post...</i></a>
+</article>

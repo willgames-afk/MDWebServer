@@ -1,0 +1,27 @@
+body{font-family: 'ubuntu';margin-top:0px;margin-bottom:0px;}
+.content{background-color: rgba(100, 100, 100, 0.88);padding: 10px;margin: 0px;}
+#content .projects .links a{
+	border: none;
+	background-color: #1c76fd;
+	color: black;
+	text-align: center;
+	display: inline-flex;
+	padding: 15px 32px;
+	font-size: 16px;
+	margin: 3px;
+	font-family: 'ubuntu';
+	text-decoration: none;
+}
+#dotcanvas{position: absolute;top: 0;left: 0;background-color: gray;z-index: -2;}
+.menu{display: flex;}
+.menu * {padding-inline-end: 1em;margin: 0px;padding: 0px 20px 0px 0px;vertical-align: baseline;}
+a{padding-block-start: 1em;padding-bottom: 1em;}
+a:visited{color: black;}
+canvas{background-color: gray;opacity: 1;}
+ul{list-style-type: none;}
+textarea{background-color: transparent;outline: none;border-radius: 3px;border-width: 2px;border-color: #505050;font-family:monospace;}
+textarea:focus{background-color: #505050;border-color:transparent;}
+code{background-color:rgb(100,100,100);color:#000}
+#login{border:0px;}
+.loadBox{display:flex;align-items: center;}
+.loadBox p{margin:0px 0px 0px 10px;}

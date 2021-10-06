@@ -1,0 +1,22 @@
+{
+	"name": "md-web-server",
+	"version": "1.0.0",
+	"description": "",
+	"main": "server.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"start": "node main.js"
+	},
+	"keywords": [],
+	"author": "William Kam",
+	"license": "ISC",
+	"dependencies": {
+		"express": "^4.17.1",
+		"fs": "0.0.1-security",
+		"katex": "^0.13.11",
+		"showdown": "^1.9.1"
+	},
+	"bin": {
+		"mdwebserver": "server.js"
+	}
+}
