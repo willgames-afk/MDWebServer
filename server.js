@@ -4,6 +4,7 @@ const express = require('express');   // Server
 const showdown = require("showdown"); // Markdown to HTML
 const katex = require("katex");       // LATeX to HTML
 const path = require("path");         // File Path stuff
+const { Template, Page, SnippetTemplate } = require("./templates")
 
 //Setup
 const app = express();
@@ -21,10 +22,14 @@ const errorMessages = {
 	"ETIMEDOUT": "Timed Out :( \nMaybe try refresing? \n(ETIMEDOUT)",
 }
 
-
-//Resource Loading
 const res_dir = process.argv[3] || "./resources/";
 const public_dir = process.argv[2];
+const extention_dir = process.argv[4];
+
+if (extention_dir) {
+	var ext_files = fs.readdirSync(extention_dir);
+	console.log(ext_files)
+}
 
 function loadRes(url) {
 	return fs.readFileSync(path.join(res_dir, url))
@@ -39,19 +44,24 @@ function loadPub(url) {
 }
 
 
-const basepage = preloadPage("post") //Page Template
-const index = preloadPage("index")   //Site Index.html
+const basepage = new Template(path.join(res_dir, "basepage"),true) //Page Template
+const postTemplate = new SnippetTemplate(path.join(res_dir, "post"),true);
+const index = new Page(path.join(res_dir, "index"),true)
 
-function loggerMWF(req, res, next) {
+
+app.use('/', (req, res, next) => {
 	console.log(`${req.method} ${req.path}`)
 	next();
-}
-app.use('/', loggerMWF);//Log all server requests
-
+});//Log all server requests
 
 app.get('/', (req, res) => {
 	console.log("handled by index handler")
-	res.send(index);
+	res.type("html");
+	if (index.requiresParent) {
+		res.send(basepage.fill({},index));
+	} else {
+		res.send(index.content);
+	}
 });
 
 //Resources
@@ -64,7 +74,7 @@ app.use('/resources/', (req, res) => {
 //  blog/
 app.get("/blog/", (req, res) => {
 	console.log("handled by blog homepage handler")
-	res.send(fillTemplate(basepage, { content: "Blog Homepage" }))
+	res.send(basepage.fill({ content: "Blog Homepage" }))
 })
 // blog/imgs/**
 app.use("/blog/imgs", (req, res) => {
@@ -105,12 +115,12 @@ app.use('/blog/', (req, res) => {
 
 	const date = new Date(parseInt(timecode, 10)).toDateString(); //Turn post date into human-readable string
 
-	const page = fillTemplate(basepage, {                   //Fill template
+	const page = basepage.fill(postTemplate.fill({                   //Fill template
 		content: postContent,
 		title: fileObj.title,
 		subtitle: fileObj.subtitle,
 		postdate: date
-	})
+	}))
 
 	res.send(page);
 })
@@ -121,25 +131,27 @@ app.use('/', (req, res) => {
 	var file;
 
 	//Attempt to load file
+	var name = path.extname(req.url);
 	try {
-		if (path.extname(req.url) === "") { //Automatically serve index.html s
+		if (name === "") { //Automatically serve index.html s
 			file = fs.readFileSync(path.join(public_dir, req.url, "index.html"));
-		} else {
-			file = fs.readFileSync(path.join(public_dir, req.url));
+		} else if (name == ".html" || name == ".page"){
+			file = basepage.fill(new Page(path,true))
 		}
 
 		//If error is thrown, send error page
 	} catch (err) {
-		if (err.code == "ENOENT") {
-			res.status(404).sendFile(path.join(__dirname, public_dir,"doesntExistYet.html"));
+		if (err.code == "ENOENT" && fs.existsSync(path.join(res_dir, "404page.html"))) {
+			res.status(404).sendFile(path.join(res_dir, "404page.html"));
 			return
 		}
+
 		sendErrorMessage(err, res);
 		return;
 	}
 
 	//If no errors have been thrown, send file (with correct filetype)
-	if (path.extname(req.url) === "") {
+	if (name === "" || name === ".page") {
 		res.type("html")
 		res.send(file);
 	} else {
