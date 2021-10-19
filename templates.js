@@ -54,7 +54,7 @@ class Template extends AlmostHTMLFile {
 			}
 			console.log(p)
 
-			var newOut = out.replace(new RegExp(`$${p}$`,"g"), cp);
+			var newOut = out.replace(new RegExp(`\\$${p}\\$`,"g"), cp);
 			if (newOut === out) {
 				//Didn't replace anything!
 				throw "Template parameter does not exist!"
@@ -63,7 +63,9 @@ class Template extends AlmostHTMLFile {
 		}
 		for (var p in optParams) {
 			var cp = optParams[p]
+			console.log("Filling parameter '" + p + "' with " + cp)
 			if (typeof cp == "object") {
+				console.log("Parameter is Object")
 				if (cp.head) {
 					head += cp.head
 				}
@@ -71,9 +73,9 @@ class Template extends AlmostHTMLFile {
 					cp = cp.content;
 				}
 			}
-			console.log(cp)
-			out = out.replace(new RegExp(`$${p}$`,"g"), cp);
+			out = out.replace(new RegExp(`\\$${p}\\$`,"g"), cp);
 		}
+		console.log(out)
 		return out;
 	}
 }
@@ -100,7 +102,7 @@ class SnippetTemplate extends AlmostHTMLFile {
 				}
 			}
 
-			var newOut = out.replace(new RegExp(`$${p}$`,"g"), cp);
+			var newOut = out.replace(new RegExp(`\\$${p}\\$`,"g"), cp);
 			if (newOut === out) {
 				//Didn't replace anything!
 				throw "Template parameter does not exist!"
@@ -115,7 +117,7 @@ class SnippetTemplate extends AlmostHTMLFile {
 					cp = cp.content;
 				}
 			}
-			out = out.replace(new RegExp(`$${p}$`,"g"), cp);
+			out = out.replace(new RegExp(`\\$${p}\\$`,"g"), cp);
 		}
 		return out;
 	}
@@ -139,13 +141,22 @@ class Page {
 		} else {
 			this.requiresParent = true;
 		}
+
+		function getHead() {
+			var res = this.file.match(/<head>([\w\W]*)<\/head>/)
+			if (res.groups) {
+				this.head = res.groups[0];
+			}
+			this.content = this.file.replace(/<head>([\w\W]*)<\/head>/,"");
+		}
+		getHead = getHead.bind(this);
 		
 		if (typeof onload == "boolean" && onload) {
 			//If onload == true, it means load sync
 			this.file = fs.readFileSync(path, { encoding: "utf8" });
 			
 			if (this.requiresParent) {
-				this._getHead.bind(this)();
+				getHead.bind(this)();
 			} else {
 				this.content = this.file;
 			}
@@ -156,7 +167,7 @@ class Page {
 				} else {
 					this.file = data;
 					if (this.requiresParent) {
-						this._getHead.bind(this)();
+						getHead.bind(this)();
 					} else {
 						this.content = this.file
 					}
@@ -165,13 +176,6 @@ class Page {
 			}.bind(this))
 		}
 		console.log("CONTENT: "+ this.content)
-	}
-	_getHead() {
-		var res = this.file.match(/<head>([\w\W]*)<\/head>/)
-		if (res.groups) {
-			this.head = res.groups[0];
-		}
-		this.content = this.file.replace(/<head>([\w\W]*)<\/head>/,"");
 	}
 }
 

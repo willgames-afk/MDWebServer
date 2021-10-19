@@ -22,21 +22,25 @@ const errorMessages = {
 	"ETIMEDOUT": "Timed Out :( \nMaybe try refresing? \n(ETIMEDOUT)",
 }
 
-const res_dir = process.argv[3] || "./resources/";
 const public_dir = process.argv[2];
+const res_dir = process.argv[3];
 const extention_dir = process.argv[4];
+const blog_dir = path.join(public_dir, "/blog/")
 
 if (extention_dir) {
 	var ext_files = fs.readdirSync(extention_dir);
 	console.log(ext_files)
 }
 
-function loadRes(url) {
-	return fs.readFileSync(path.join(res_dir, url))
+function red(string) {
+	return `\x1b[31m${string}\x1b[0m`
+}
+function green(string) {
+	return `\x1b[32m${string}\x1b[0m`
 }
 
-function preloadPage(url) {
-	return fs.readFileSync(path.join(res_dir, url + ".html")).toString();
+function loadRes(url) {
+	return fs.readFileSync(path.join(res_dir, url))
 }
 
 function loadPub(url) {
@@ -44,21 +48,26 @@ function loadPub(url) {
 }
 
 
-const basepage = new Template(path.join(res_dir, "basepage"),true) //Page Template
-const postTemplate = new SnippetTemplate(path.join(res_dir, "post"),true);
-const index = new Page(path.join(res_dir, "index"),true)
-
+const basepage = new Template(path.join(res_dir, "basepage"), true) //Page Template
+const postTemplate = new SnippetTemplate(path.join(res_dir, "post"), true);
+const index = new Page(path.join(res_dir, "index"), true)
 
 app.use('/', (req, res, next) => {
-	console.log(`${req.method} ${req.path}`)
+	if (req.method == "GET") {
+		console.log(`${green(req.method)}  ${req.path}`)
+	} else if (req.method == "POST") {
+		console.log(`${red(req.method)} ${req.path}`)
+	} else {
+		console.log(`${req.method}  ${req.path}`)
+	}
 	next();
 });//Log all server requests
 
 app.get('/', (req, res) => {
-	console.log("handled by index handler")
+	//console.log("handled by index handler")
 	res.type("html");
 	if (index.requiresParent) {
-		res.send(basepage.fill({},index));
+		res.send(basepage.fill({}, { content: index.content }));
 	} else {
 		res.send(index.content);
 	}
@@ -66,19 +75,19 @@ app.get('/', (req, res) => {
 
 //Resources
 app.use('/resources/', (req, res) => {
-	console.log("handled by resources handler")
+	//console.log("handled by resources handler")
 	res.type(path.extname(req.url)) //Send correct filetype
 	res.send(loadRes(req.url));
 })
 
 //  blog/
 app.get("/blog/", (req, res) => {
-	console.log("handled by blog homepage handler")
+	//console.log("handled by blog homepage handler")
 	res.send(basepage.fill({ content: "Blog Homepage" }))
 })
 // blog/imgs/**
 app.use("/blog/imgs", (req, res) => {
-	console.log("handled by blog image handler")
+	//console.log("handled by blog image handler")
 	var file;
 	try {
 		file = loadPub(path.join("blog/imgs", req.path)); //Get the file
@@ -91,8 +100,8 @@ app.use("/blog/imgs", (req, res) => {
 })
 // blog/** not including /imgs or /
 app.use('/blog/', (req, res) => {
-	console.log("Handled by Blog Handler")
-	var url = path.join("./public/blog", `${req.url}.md`)
+	//console.log("Handled by Blog Handler")
+	var url = path.join(blog_dir, `${req.url}.md`)
 	var rawfile
 	try {
 		rawfile = fs.readFileSync(url); //Get the file
@@ -104,7 +113,7 @@ app.use('/blog/', (req, res) => {
 	if (!fileObj.timecode) {
 		var timecode = addTimecode(url);
 	} else {
-		console.log(fileObj.timecode)
+		//console.log(fileObj.timecode)
 		var timecode = fileObj.timecode;
 	}
 
@@ -115,28 +124,33 @@ app.use('/blog/', (req, res) => {
 
 	const date = new Date(parseInt(timecode, 10)).toDateString(); //Turn post date into human-readable string
 
-	const page = basepage.fill(postTemplate.fill({                   //Fill template
-		content: postContent,
-		title: fileObj.title,
-		subtitle: fileObj.subtitle,
-		postdate: date
-	}))
+	const page = basepage.fill({
+		content: postTemplate.fill({                   //Fill template
+			content: postContent,
+			title: fileObj.title,
+			subtitle: fileObj.subtitle,
+			postdate: date
+		})
+	})
 
 	res.send(page);
 })
 
 //Anything in the public folder will be served from the root directory
 app.use('/', (req, res) => {
-	console.log("handled by bulk web handler")
+	//console.log("Handled by bulk web handler")
 	var file;
 
 	//Attempt to load file
 	var name = path.extname(req.url);
 	try {
 		if (name === "") { //Automatically serve index.html s
+			//console.log(`Directory; Serving local index.html (${path.join(public_dir, req.url, "index.html")})`)
 			file = fs.readFileSync(path.join(public_dir, req.url, "index.html"));
-		} else if (name == ".html" || name == ".page"){
-			file = basepage.fill(new Page(path,true))
+		} else if (name == ".page") {
+			file = basepage.fill({}, new Page(path, true))
+		} else {
+			file = fs.readFileSync(path.join(public_dir, req.url))
 		}
 
 		//If error is thrown, send error page
@@ -225,14 +239,6 @@ function addTimecode(filePath) { //Inserts a string into a specific place in a f
 	return code;
 }
 
-function fillTemplate(template, params) {
-	var out = template;
-	for (var p in params) {
-		out = out.replace('$' + p + '$', params[p]);
-	}
-	return out;
-}
-
 function sendErrorMessage(err, res) {
 	console.log("Failed, " + err.code)
 	res.type("html");
@@ -245,7 +251,7 @@ function NLtoBR(string) {
 
 function getPosts() {
 
-	const _dir = fs.readdirSync("./public/blog", { withFileTypes: true });
+	const _dir = fs.readdirSync(blog_dir, { withFileTypes: true });
 	var dir = [];
 	for (var i = 0; i < _dir.length; i++) {
 		if (_dir[i].name[0] != ".") {
@@ -257,3 +263,4 @@ function getPosts() {
 	return dir;
 
 }
+console.log(JSON.stringify(getPosts()));
