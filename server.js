@@ -6,30 +6,23 @@ const katex = require("katex");       // LATeX to HTML
 const path = require("path");         // File Path stuff
 const { Template, Page, SnippetTemplate } = require("./templates")
 
-//Setup
-const app = express();
-const port = 3000;
+//Initialization
 
+const port = process.env.PORT || 3000;
+const public_dir = process.argv[2];
+const res_dir = process.argv[3];
+const extention_dir = process.argv[4];
+const blog_dir = path.join(public_dir, "/blog/")
 //error code lookup
 const errorMessages = {
+	"EPERM": "Sorry,but you don't have the permissions to do that. \n(EPERM)",
 	"ENOENT": "Couldn't find this file :( \n(ENOENT)",
 	"EACCES": "Sorry, but you don't have access to that! \n(EACCES)",
 	"ECONNREFUSED": "Connection Refused. \n(ECONNREFUSED)",
 	"ECONNRESET": "Connection reset by peer. :( \n(ECONNRESET)",
 	"EMFILE": "Too many open files in system. (Probably due to Will writing bad code) \n(EMFILE)",
 	"ENOTFOUND": "DNS lookup failed. \n(ENOTFOUND)",
-	"EPERM": "Sorry,but you don't have the permissions to do that. \n(EPERM)",
 	"ETIMEDOUT": "Timed Out :( \nMaybe try refresing? \n(ETIMEDOUT)",
-}
-
-const public_dir = process.argv[2];
-const res_dir = process.argv[3];
-const extention_dir = process.argv[4];
-const blog_dir = path.join(public_dir, "/blog/")
-
-if (extention_dir) {
-	var ext_files = fs.readdirSync(extention_dir);
-	console.log(ext_files)
 }
 
 function red(string) {
@@ -50,7 +43,10 @@ function loadPub(url) {
 
 const basepage = new Template(path.join(res_dir, "basepage"), true) //Page Template
 const postTemplate = new SnippetTemplate(path.join(res_dir, "post"), true);
+const postCardTemplate = new SnippetTemplate(path.join(res_dir, "post-card"), true);
 const index = new Page(path.join(res_dir, "index"), true)
+
+const app = express(); //App Init
 
 app.use('/', (req, res, next) => {
 	if (req.method == "GET") {
@@ -63,6 +59,19 @@ app.use('/', (req, res, next) => {
 	next();
 });//Log all server requests
 
+if (extention_dir) {
+	(async () => {
+		var ext_files = fs.readdirSync(extention_dir, { withFileTypes: true });
+		console.log(ext_files)
+		for (var f of ext_files) {
+			if (f.isDirectory()) {
+				const ext = await import(path.join(extention_dir, f.name, `${f.name}.js`));
+				app.get('/', ext.default()())
+			}
+		}
+	})().catch(err=>console.error(err))
+}
+
 app.get('/', (req, res) => {
 	//console.log("handled by index handler")
 	res.type("html");
@@ -72,6 +81,10 @@ app.get('/', (req, res) => {
 		res.send(index.content);
 	}
 });
+
+app.use('/backend', (req, res) => {
+
+})
 
 //Resources
 app.use('/resources/', (req, res) => {
@@ -98,6 +111,9 @@ app.use("/blog/imgs", (req, res) => {
 	res.type(path.extname(req.url));
 	res.send(file);
 })
+
+const converter = new showdown.Converter();             //initialize md converter
+
 // blog/** not including /imgs or /
 app.use('/blog/', (req, res) => {
 	//console.log("Handled by Blog Handler")
@@ -117,9 +133,8 @@ app.use('/blog/', (req, res) => {
 		var timecode = fileObj.timecode;
 	}
 
-	const latexConverted = preconvertLatex(fileObj.file)    //Convert latex to html
+	const latexConverted = convertLatex(fileObj.file)    //Convert latex to html
 
-	const converter = new showdown.Converter();             //initialize md converter
 	const postContent = converter.makeHtml(latexConverted); //convert markdown to html
 
 	const date = new Date(parseInt(timecode, 10)).toDateString(); //Turn post date into human-readable string
@@ -180,7 +195,8 @@ app.listen(port, () => {
 })
 
 
-function preconvertLatex(mdstring) {
+function convertLatex(mdstring) {
+	//
 	var out = mdstring;
 	var match;
 	while ((match = /```latex\n[^`]+\n```/.exec(out)) !== null) {
@@ -254,13 +270,26 @@ function getPosts() {
 	const _dir = fs.readdirSync(blog_dir, { withFileTypes: true });
 	var dir = [];
 	for (var i = 0; i < _dir.length; i++) {
-		if (_dir[i].name[0] != ".") {
-			if (!_dir[i].isDirectory()) {
-				dir.push({ name: _dir[i].name, });
-			}
+		if (path.extname(_dir[i].name) == ".md") {
+			dir.push({ name: _dir[i].name, });
 		}
 	}
 	return dir;
+}
+
+function getCardsBySort(sortType) {
 
 }
+
+function getPostCard(postname, timeZone) {
+	var url = path.join(blog_dir, postname);
+	var parsed = splitFile(fs.readFileSync(url).toString()); //Get the file
+	return postCardTemplate.fill({
+		title: parsed.title,
+		subtitle: parsed.subtitle,
+		date: new Date(parsed.timecode).toLocaleDateString("en-US", { timeZone: timeZone || 'America/Los_Angeles' })
+	})
+
+}
+
 console.log(JSON.stringify(getPosts()));

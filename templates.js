@@ -52,7 +52,7 @@ class Template extends AlmostHTMLFile {
 					cp = cp.content;
 				}
 			}
-			console.log(p)
+			//console.log(p)
 
 			var newOut = out.replace(new RegExp(`\\$${p}\\$`,"g"), cp);
 			if (newOut === out) {
@@ -63,9 +63,9 @@ class Template extends AlmostHTMLFile {
 		}
 		for (var p in optParams) {
 			var cp = optParams[p]
-			console.log("Filling parameter '" + p + "' with " + cp)
+			//console.log("Filling parameter '" + p + "' with " + cp)
 			if (typeof cp == "object") {
-				console.log("Parameter is Object")
+				//console.log("Parameter is Object")
 				if (cp.head) {
 					head += cp.head
 				}
@@ -75,7 +75,7 @@ class Template extends AlmostHTMLFile {
 			}
 			out = out.replace(new RegExp(`\\$${p}\\$`,"g"), cp);
 		}
-		console.log(out)
+		//console.log(out)
 		return out;
 	}
 }
@@ -126,7 +126,7 @@ class SnippetTemplate extends AlmostHTMLFile {
 class Page {
 	constructor(path, onload = false) {
 		var ext = p.extname(path)
-		console.log(ext)
+		//console.log(ext)
 		if (ext.length > 0 && !(ext == ".page" || ext == ".html")) {
 			console.warn(`Expected Extension ${type}, got ${ext} instead.`)
 		} else if (ext.length == 0) {
@@ -175,7 +175,7 @@ class Page {
 				}
 			}.bind(this))
 		}
-		console.log("CONTENT: "+ this.content)
+		//console.log("CONTENT: "+ this.content)
 	}
 }
 
