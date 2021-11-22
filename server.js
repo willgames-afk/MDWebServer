@@ -59,21 +59,46 @@ app.use('/', (req, res, next) => {
 	next();
 });//Log all server requests
 
-if (extention_dir) {
-	(async () => {
-		var ext_files = fs.readdirSync(extention_dir, { withFileTypes: true });
-		console.log(ext_files)
-		for (var f of ext_files) {
-			if (f.isDirectory()) {
-				const ext = await import(path.join(extention_dir, f.name, `${f.name}.js`));
-				app.get('/', ext.default()())
-			}
+//Anything in the public folder will be served from the root directory
+app.use('/', (req, res) => {
+	console.log("Handled by bulk web handler")
+	var file;
+
+	//Attempt to load file
+	var name = path.extname(req.url);
+	try {
+		if (name === "") { //Automatically serve index.html s
+			//console.log(`Directory; Serving local index.html (${path.join(public_dir, req.url, "index.html")})`)
+			file = fs.readFileSync(path.join(public_dir, req.url, "index.html"));
+		} else if (name == ".page") {
+			file = basepage.fill({}, new Page(path, true))
+		} else {
+			file = fs.readFileSync(path.join(public_dir, req.url))
 		}
-	})().catch(err=>console.error(err))
-}
+
+		//If error is thrown, send error page
+	} catch (err) {
+		if (err.code == "ENOENT" && fs.existsSync(path.join(res_dir, "404page.html"))) {
+			res.status(404).sendFile(path.join(res_dir, "404page.html"));
+			return
+		}
+
+		sendErrorMessage(err, res);
+		return;
+	}
+
+	//If no errors have been thrown, send file (with correct filetype)
+	if (name === "" || name === ".page") {
+		res.type("html")
+		res.send(file);
+	} else {
+		res.type("." + path.extname(req.url)) //Send correct filetype
+		res.send(file);
+	}
+})
 
 app.get('/', (req, res) => {
-	//console.log("handled by index handler")
+	console.log("handled by index handler")
 	res.type("html");
 	if (index.requiresParent) {
 		res.send(basepage.fill({}, { content: index.content }));
@@ -81,6 +106,21 @@ app.get('/', (req, res) => {
 		res.send(index.content);
 	}
 });
+
+if (extention_dir) {
+	(async () => {
+		var ext_files = fs.readdirSync(extention_dir, { withFileTypes: true });
+		console.log(ext_files)
+		for (var f of ext_files) {
+			if (f.isDirectory()) {
+				console.log(`Loading Extention '${f.name}'`)
+				const ext = await import(path.join(extention_dir, f.name, `${f.name}.js`));
+				//console.log(ext.default())
+				app.use('/', ext.default())
+			}
+		}
+	})().catch(err=>console.error(err))
+}
 
 app.use('/backend', (req, res) => {
 
@@ -149,44 +189,6 @@ app.use('/blog/', (req, res) => {
 	})
 
 	res.send(page);
-})
-
-//Anything in the public folder will be served from the root directory
-app.use('/', (req, res) => {
-	//console.log("Handled by bulk web handler")
-	var file;
-
-	//Attempt to load file
-	var name = path.extname(req.url);
-	try {
-		if (name === "") { //Automatically serve index.html s
-			//console.log(`Directory; Serving local index.html (${path.join(public_dir, req.url, "index.html")})`)
-			file = fs.readFileSync(path.join(public_dir, req.url, "index.html"));
-		} else if (name == ".page") {
-			file = basepage.fill({}, new Page(path, true))
-		} else {
-			file = fs.readFileSync(path.join(public_dir, req.url))
-		}
-
-		//If error is thrown, send error page
-	} catch (err) {
-		if (err.code == "ENOENT" && fs.existsSync(path.join(res_dir, "404page.html"))) {
-			res.status(404).sendFile(path.join(res_dir, "404page.html"));
-			return
-		}
-
-		sendErrorMessage(err, res);
-		return;
-	}
-
-	//If no errors have been thrown, send file (with correct filetype)
-	if (name === "" || name === ".page") {
-		res.type("html")
-		res.send(file);
-	} else {
-		res.type("." + path.extname(req.url)) //Send correct filetype
-		res.send(file);
-	}
 })
 
 //Start the app
